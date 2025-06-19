@@ -27,7 +27,7 @@ export default function UserManagement() {
         const res = await fetch("/api/organizations");
         if (!res.ok) throw new Error("Failed to fetch organizations");
         const data = await res.json();
-        setOrganizations(data.organizations || []);
+        setOrganizations(data || []);
       } catch (err: any) {
         setError(err.message || "Unknown error");
       } finally {
