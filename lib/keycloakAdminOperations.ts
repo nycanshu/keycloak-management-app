@@ -1,4 +1,5 @@
 import axios from "axios"
+import { getAccessToken } from "./keycloakTokenManager";
 
 
 type Organization = {
@@ -78,6 +79,7 @@ export async function createOrganizationInKeycloak(
     email?: string
 ): Promise<{ id: string; name: string }> {
     try {
+        //check if organization already exists
         console.log('Creating Keycloak organization:', orgName);
 
         const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations`;
@@ -106,6 +108,9 @@ export async function createOrganizationInKeycloak(
                 'Content-Type': 'application/json'
             }
         });
+
+
+
 
         // Fetch the created organization by name
         const getOrgUrl = `${url}?search=${encodeURIComponent(orgName)}`;
@@ -144,6 +149,19 @@ export async function createOrganizationInKeycloak(
 
         if (error.response?.status === 409) {
             //organization already exists so add user to organization
+            const organizations = await getOrganizationsFromKeycloak(token);
+            const organization = organizations.find((org: any) => org.name === orgName);
+            if (organization) {
+                return {
+                    id: organization.id,
+                    name: organization.name,
+                    
+                }
+            }
+            else{
+                throw new Error('Organization not found');
+            }
+
 
 
         } else if (error.response?.status === 403) {
@@ -348,7 +366,7 @@ export async function createClientRolesInKeycloak(token: string, clientId: strin
 
 
 //create user in keycloak
-export async function createUserInKeycloak(token: string, email: string) {
+export async function createUserInKeycloak(token: string, email: string, firstName: string, lastName: string, password: string) {
     const baseUrl = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users`;
 
     try {
@@ -373,14 +391,14 @@ export async function createUserInKeycloak(token: string, email: string) {
         const payload = {
             username: email,
             email,
-            firstName: "",
-            lastName: "",
+            firstName: firstName,
+            lastName: lastName,
             enabled: true,
             emailVerified: true,
             credentials: [
                 {
                     type: "password",
-                    value: "password",
+                    value: password,
                     temporary: true,
                 },
             ],
@@ -446,14 +464,124 @@ export async function createUserInKeycloak(token: string, email: string) {
 
 
 
+//get user from keycloak
+export async function getUserFromKeycloak(token: string, email: string) {
+    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users?email=${email}&exact=true`;
+    const response = await axios.get(url, {
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    })
+    return response.data
+}
 
 
 
+//add user to organization
+export async function addUserToOrganization(token: string, organizationId: string, userId: string): Promise<boolean> {
+
+    // Construct the Keycloak API URL
+    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations/${organizationId}/members`;
+
+    try {
+        console.log("Adding user to organization:", organizationId, userId);
+            // The API expects the user ID as a string, not as a JSON string.
+        // If you want to invite by email (for a user that does not exist), use the /members/invite-user endpoint with { email: "user@example.com" }
+        const trimmerUserId = userId.trim();
+        const response = await axios.post(url, JSON.stringify(trimmerUserId), {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        // 2. Handle successful response (HTTP 201 Created)
+        if (response.status === 201) {
+            console.log(`[Keycloak API] Successfully added user "${userId}" to organization "${organizationId}".`);
+            return true;
+        } else {
+            // This branch should ideally not be reached if Axios correctly throws for non-2xx responses.
+            // However, as a safeguard, log unexpected successful status codes.
+            console.warn(`[Keycloak API] Unexpected successful status code ${response.status} when adding user to organization. Response data:`, response.data);
+            return true; // Still consider it a success if Keycloak returns a 2xx code.
+        }
+
+    } catch (error) {
+        // 3. Enhanced Error Handling for production level
+        if (axios.isAxiosError(error) && error.response) {
+            const { status, data } = error.response;
+            const errorMessage = data?.errorMessage || data?.error || JSON.stringify(data);
+
+            console.error(`[Keycloak API Error] Failed to add user "${userId}" to organization "${organizationId}". Status: ${status}, Details:`, errorMessage);
+
+            switch (status) {
+                case 400: // Bad Request - e.g., malformed UUIDs
+                    throw new Error(`Keycloak Error 400 (Bad Request): The provided user ID or organization ID is invalid. Details: ${errorMessage}`);
+                case 401: // Unauthorized - Invalid or expired token
+                    throw new Error('Keycloak Error 401 (Unauthorized): Invalid or expired access token. Please ensure your token is valid and active.');
+                case 403: // Forbidden - Insufficient permissions for the admin token
+                    throw new Error('Keycloak Error 403 (Forbidden): Insufficient permissions to add a user to this organization. Check admin role assignments.');
+                case 404: // Not Found - Realm, organization, or user does not exist
+                    throw new Error(`Keycloak Error 404 (Not Found): One of the resources (realm, organization "${organizationId}", or user "${userId}") was not found.`);
+                case 409: // Conflict - User is already a member of the organization
+                    console.warn(`[Keycloak API] User "${userId}" is already a member of organization "${organizationId}". Skipping addition.`);
+                    return true; // Treat as success if user is already a member, as the desired state is achieved.
+                default:
+                    throw new Error(`Keycloak API Error (${status}): An unexpected error occurred. Details: ${errorMessage}`);
+            }
+        } else {
+            // Handle non-Axios or network errors
+            console.error(`[Network/Unexpected Error] An unexpected error occurred while adding user "${userId}" to organization "${organizationId}":`, error);
+            throw new Error(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+}
 
 
 
-
-
+export async function assignClientRoleToUser({
+    userId,
+    clientUUID,
+    roles,
+  }: {
+    userId: string;
+    clientUUID: string;
+    roles: { id: string; name: string }[];
+  }): Promise<{ success: boolean; message: string }> {
+    try {
+      const accessToken = await getAccessToken();
+      const response = await axios.post(
+        `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users/${userId}/role-mappings/clients/${clientUUID}`,
+        roles,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          validateStatus: () => true, // Prevent axios from throwing on non-2xx
+        }
+      );
+  
+      if (response.status === 204) {
+        return { success: true, message: "Role(s) assigned successfully." };
+      } else {
+        return {
+          success: false,
+          message:
+            response.data?.errorMessage ||
+            response.data?.error ||
+            "Failed to assign roles.",
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error?.response?.data?.error || error.message || "Unknown error",
+      };
+    }
+  }
+  
+  
 
 
 

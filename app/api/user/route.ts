@@ -1,17 +1,26 @@
 import { getAccessToken } from "@/lib/keycloakTokenManager"
 import { getOrganisationNameFromEmail } from "@/lib/getOrganisationFromEmail"
 import { type NextRequest, NextResponse } from "next/server"
-import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak } from "@/lib/keycloakAdminOperations"
+import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak, addUserToOrganization, getOrganizationFromKeycloak } from "@/lib/keycloakAdminOperations"
 
 export async function POST(request: NextRequest) {
   let email: string;
   let organizationName: string;
   let accessToken: string;
 
+  let firstName: string;
+  let lastName: string;
+  let password: string;
+
   // Step 1: Parse + Validate Email
   try {
     const body = await request.json();
     email = body.email;
+    firstName = body.firstName;
+    lastName = body.lastName;
+    password = body.password;
+
+    
 
     if (!email) {
       return NextResponse.json({ success: false, message: "Email is required" }, { status: 400 });
@@ -61,16 +70,18 @@ export async function POST(request: NextRequest) {
     const organization = await createOrganizationInKeycloak(accessToken, organizationName, email);
     console.log("organization created:", organization);
 
-    //if organization exists then add user to organization
-    
 
     const client = await createClientInKeycloak(accessToken, organizationName);
     console.log("client created:", client);
 
     let userData: any;
     try {
-      userData = await createUserInKeycloak(accessToken, email);
+      userData = await createUserInKeycloak(accessToken, email, firstName, lastName, password);
       console.log("user created:", userData);
+
+
+      //add user to organization
+      await addUserToOrganization(accessToken, organization.id, userData.user.id);
     } catch (error) {
       console.error("Error creating user:", error);
       return NextResponse.json({ success: false, message: "Failed to create user" }, { status: 500 });
@@ -84,8 +95,16 @@ export async function POST(request: NextRequest) {
     };
 
     const cleanClient = {
+      clientUUID: client.clientUUID,
       clientId: client.clientId,
       name: client.name,
+      // Add other relevant fields
+    };
+
+    const cleanClientRoles = {
+      
+      clientId: client.clientId,
+      roles: client.roles,
       // Add other relevant fields
     };
 
@@ -106,7 +125,9 @@ export async function POST(request: NextRequest) {
       message: "Organization and client created successfully and user created successfully",
       organization: cleanOrganization,
       client: cleanClient,
+      clientRoles: cleanClientRoles,
       user: cleanUser,
+
     }, { status: 201 });
 
   } catch (error) {
