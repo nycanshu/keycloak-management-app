@@ -1,7 +1,7 @@
 import { getAccessToken } from "@/lib/keycloakTokenManager"
 import { getOrganisationNameFromEmail } from "@/lib/getOrganisationFromEmail"
 import { type NextRequest, NextResponse } from "next/server"
-import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled } from "@/lib/keycloakAdminOperations"
+import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak } from "@/lib/keycloakAdminOperations"
 
 export async function POST(request: NextRequest) {
   let email: string;
@@ -74,5 +74,16 @@ export async function POST(request: NextRequest) {
     { message: "User created successfully", organizationName },
     { status: 201 }
   );
+}
+
+export async function GET() {
+  try {
+    const accessToken = await getAccessToken();
+    const organizations = await getOrganizationsFromKeycloak(accessToken);
+    return NextResponse.json({ organizations }, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching organizations:", error);
+    return NextResponse.json({ error: "Failed to fetch organizations" }, { status: 500 });
+  }
 }
 

@@ -169,3 +169,23 @@ export async function createClientInKeycloak(token: string, organization: string
         throw error
     }
 }
+
+export async function getOrganizationsFromKeycloak(token: string) {
+    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations`;
+    const response = await axios.get(url, {
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    })
+    return response.data
+}
+
+export async function getOrganizationFromKeycloak(token: string, organizationId: string) {
+    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations/${organizationId}/members`;
+    const response = await axios.get(url, {
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    })
+    return response.data
+}
