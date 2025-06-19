@@ -1,59 +1,59 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { use, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function OrganizationPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const [organization, setOrganization] = useState<any>(null);
+  const { id } = use(params);
+  const searchParams = useSearchParams();
+
+  const name = searchParams.get("name");
+  const status = searchParams.get("enabled") === "true";
+
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const id = params.id;
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
+    async function fetchMembers() {
       try {
-        const orgRes = await fetch(`/api/organization/${id}`);
-        if (!orgRes.ok) throw new Error("Failed to fetch organization");
-        const orgData = await orgRes.json();
-        setOrganization(orgData);
-        // Fetch members
-        const membersRes = await fetch(`/api/organization/${id}/members`);
-        if (!membersRes.ok) throw new Error("Failed to fetch members");
-        const membersData = await membersRes.json();
-        setMembers(membersData);
+        const res = await fetch(`/api/organization/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch members");
+        const data = await res.json();
+        console.log(data);
+        setMembers(data);
       } catch (err: any) {
         setError(err.message || "Unknown error");
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+    fetchMembers();
   }, [id]);
 
   return (
     <div className="p-6">
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Organization: {organization?.name || id}</CardTitle>
+          <CardTitle>Organization: {name || id}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-muted-foreground mb-2">
-            Domains:{" "}
-            {organization?.domains?.map((d: any) => d.name).join(", ") || "N/A"}
-          </div>
           <div>
             Status:{" "}
-            {organization?.enabled ? (
-              <Badge variant="default">Active</Badge>
+            {status === true ? (
+              <Badge className="bg-green-500" variant="default">
+                Active
+              </Badge>
             ) : (
-              <Badge variant="destructive">Inactive</Badge>
+              <Badge className="bg-red-500" variant="default">
+                Inactive
+              </Badge>
             )}
           </div>
         </CardContent>
@@ -77,6 +77,7 @@ export default function OrganizationPage({
                   <tr className="bg-muted">
                     <th className="px-4 py-2 text-left">Username</th>
                     <th className="px-4 py-2 text-left">Email</th>
+                    <th className="px-4 py-2 text-left">Email Verified</th>
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-left">Created</th>
                     <th className="px-4 py-2 text-left">Membership Type</th>
@@ -88,10 +89,17 @@ export default function OrganizationPage({
                       <td className="px-4 py-2">{user.username}</td>
                       <td className="px-4 py-2">{user.email}</td>
                       <td className="px-4 py-2">
+                        {user.emailVerified ? "Yes" : "No"}
+                      </td>
+                      <td className="px-4 py-2">
                         {user.enabled ? (
-                          <Badge variant="default">Active</Badge>
+                          <Badge className="bg-green-500" variant="default">
+                            Active
+                          </Badge>
                         ) : (
-                          <Badge variant="destructive">Inactive</Badge>
+                          <Badge className="bg-red-500" variant="default">
+                            Inactive
+                          </Badge>
                         )}
                       </td>
                       <td className="px-4 py-2">

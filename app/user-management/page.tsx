@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { UserFormDialog } from "@/components/user-form-dialog";
 import { Plus, Users, Mail, Calendar } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function UserManagement() {
@@ -52,7 +53,7 @@ export default function UserManagement() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid gap-6 md:grid-cols-2 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -74,31 +75,7 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {organizations.filter((org) => org.status === "Active").length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              New This Month
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {
-                organizations.filter((org) => {
-                  if (!org.createdAt) return false;
-                  const created = new Date(org.createdAt);
-                  const now = new Date();
-                  return (
-                    created.getMonth() === now.getMonth() &&
-                    created.getFullYear() === now.getFullYear()
-                  );
-                }).length
-              }
+              {organizations.filter((org) => org.enabled === true).length}
             </div>
           </CardContent>
         </Card>
@@ -111,47 +88,62 @@ export default function UserManagement() {
             A list of all organizations in your Keycloak instance
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <div>Loading organizations...</div>
           ) : error ? (
             <div className="text-red-500">{error}</div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-2">
               {organizations.map((organization: any) => (
-                <div
+                <Link
+                  href={{
+                    pathname: `/user-management/organizations/${organization.id}`,
+                    query: {
+                      name: organization.name,
+                      enabled: organization.enabled as boolean,
+                    },
+                  }}
                   key={organization.id || organization.name}
-                  className="flex items-center justify-between p-4 border rounded-lg"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                      <Mail className="h-4 w-4" />
+                  <div
+                    key={organization.id || organization.name}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{organization.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Domains:{" "}
+                          {organization.domains &&
+                          organization.domains.length > 0
+                            ? organization.domains
+                                .map((d: any) => d.name)
+                                .join(", ")
+                            : "N/A"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{organization.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Domains:{" "}
-                        {organization.domains && organization.domains.length > 0
-                          ? organization.domains
-                              .map((d: any) => d.name)
-                              .join(", ")
-                          : "N/A"}
-                      </p>
+                    <div className="flex flex-col items-end space-y-1">
+                      <span
+                        className={`text-xs font-semibold ${
+                          organization.enabled
+                            ? "text-green-600"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {organization.enabled ? "Active" : "Inactive"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Created: N/A
+                      </span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end space-y-1">
-                    <span
-                      className={`text-xs font-semibold ${
-                        organization.enabled ? "text-green-600" : "text-red-500"
-                      }`}
-                    >
-                      {organization.enabled ? "Active" : "Inactive"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Created: N/A
-                    </span>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
