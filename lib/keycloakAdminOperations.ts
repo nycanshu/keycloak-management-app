@@ -143,7 +143,9 @@ export async function createOrganizationInKeycloak(
         });
 
         if (error.response?.status === 409) {
-            throw new Error(`Organization '${orgName}' already exists in Keycloak`);
+            //organization already exists so add user to organization
+
+
         } else if (error.response?.status === 403) {
             throw new Error('Insufficient permissions to create organization in Keycloak');
         } else if (error.response?.status === 404) {
@@ -429,6 +431,18 @@ export async function createUserInKeycloak(token: string, email: string) {
 
 
 
+// // invite user to organization /admin/realms/{realm}/organizations/{org-id}/members/invite-user
+// export async function inviteUserToOrganization(token: string, organizationId: string, userId: string) {
+//     const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations/${organizationId}/members`;
+//     const response = await axios.post(url, {
+//         userId: userId
+//     }, {
+//         headers: {  
+//             "Authorization": `Bearer ${token}`
+//         }
+//     })
+//     return response.data
+// }
 
 
 

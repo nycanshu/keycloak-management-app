@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
     const organization = await createOrganizationInKeycloak(accessToken, organizationName, email);
     console.log("organization created:", organization);
 
+    //if organization exists then add user to organization
+    
+
     const client = await createClientInKeycloak(accessToken, organizationName);
     console.log("client created:", client);
 
