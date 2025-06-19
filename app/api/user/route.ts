@@ -1,5 +1,5 @@
 import { getAccessToken } from "@/lib/keycloakTokenManager"
-import { getOrganisationFromEmail } from "@/lib/getOrganisationFromEmail"
+import { getOrganisationNameFromEmail } from "@/lib/getOrganisationFromEmail"
 import { type NextRequest, NextResponse } from "next/server"
 import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled } from "@/lib/keycloakAdminOperations"
 
@@ -11,11 +11,15 @@ export async function POST(request: NextRequest) {
   try {
     // Parse and validate email
     const body = await request.json();
+
     email = body.email;
+
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Extract organization name
-    organizationName = getOrganisationFromEmail(email);
+    organizationName = getOrganisationNameFromEmail(email);
     if (!organizationName) {
       return NextResponse.json({ error: "Could not extract organization from email" }, { status: 400 });
     }

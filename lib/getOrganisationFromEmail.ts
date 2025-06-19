@@ -1,17 +1,5 @@
-type Organization = {
-  name: string;
-  alias: string;
-  description: string;
-  redirectUrl: string;
-  domains: {
-    name: string;
-    verified: boolean;
-  }[];
-  attributes: Record<string, any>;
-}
 
-
-export function getOrganisationFromEmail(email: string) {
+export function getOrganisationNameFromEmail(email: string) {
     if (!email || typeof email !== 'string') {
       throw new Error("Invalid email");
     }
@@ -21,14 +9,9 @@ export function getOrganisationFromEmail(email: string) {
       throw new Error("Invalid email format");
     }
   
-    const fullDomain = parts[1]; // e.g., "veltech.edu.in" or "sub.veltech.edu.in"
+    const fullDomain = parts[1];
     const domainParts = fullDomain.split('.');
   
-    // Extract second-level domain (like "veltech" from "veltech.edu.in")
-    const orgName = domainParts.length >= 2
-      ? domainParts[domainParts.length - 3] // e.g., "veltech"
-      : domainParts[0];
-  
-    return orgName.toLowerCase()
+    return domainParts[0].toLowerCase()
   }
   

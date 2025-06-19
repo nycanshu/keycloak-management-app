@@ -4,8 +4,7 @@ let accessToken: string | null = null;
 let tokenExpiry: number = 0; // epoch seconds
 
 // Fallback values if .env is not set
-const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
-const REALM_NAME = process.env.KEYCLOAK_REALM ?? "master";
+const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080/";
 const ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME ?? "admin";
 const ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD ?? "admin";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID ?? "admin-cli";
@@ -18,7 +17,7 @@ export async function getAccessToken(): Promise<string> {
     return accessToken;
   }
 
-  const tokenUrl = `${KEYCLOAK_BASE_URL}/realms/${REALM_NAME}/protocol/openid-connect/token`;
+  const tokenUrl = `${KEYCLOAK_BASE_URL}/realms/master/protocol/openid-connect/token`;
 
   const params = new URLSearchParams();
   params.append("client_id", CLIENT_ID);

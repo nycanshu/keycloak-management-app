@@ -1,4 +1,3 @@
-import { getAccessToken } from "./keycloakTokenManager"
 import axios from "axios"
 
 
@@ -51,22 +50,27 @@ const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080"
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "test123"
 
 
-// is organization enabled in re
-export async function isOrganizationEnabled(token: string) {
-    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations`;
-    const response = await axios.get(url, {
+//is organization enabled in keycloak for that realm
+export async function isOrganizationEnabled(token: string): Promise<boolean> {
+    try {
+      const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations`;
+      const response = await axios.get(url, {
         headers: {
-            "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${token}`
         }
-    })
-    // if it returns 200, then organization is enabled
-    if (response.status === 200) {
-        return true
+      });
+  
+      // If it returns 200, then organization is enabled
+      return response.status === 200;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.error("Organizations feature is not enabled in this Keycloak realm");
+        return false;
+      }
+      console.error("Unexpected error checking organization feature:", error.message);
+      throw error;
     }
-    return false
-
-}
-
+  }
 //for creating organization in keycloak
 export async function createOrganizationInKeycloak(token: string, organization: string) : Promise<Organization>{
 
