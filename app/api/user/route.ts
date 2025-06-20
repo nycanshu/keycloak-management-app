@@ -1,7 +1,7 @@
 import { getAccessToken } from "@/lib/keycloakTokenManager"
 import { getOrganisationNameFromEmail } from "@/lib/getOrganisationFromEmail"
 import { type NextRequest, NextResponse } from "next/server"
-import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak, addUserToOrganization, getOrganizationFromKeycloak, inviteUserToOrganization } from "@/lib/keycloakAdminOperations"
+import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak, addUserToOrganization, getOrganizationFromKeycloak, inviteUserToOrganization, assignClientRoleToUser } from "@/lib/keycloakAdminOperations"
 
 export async function POST(request: NextRequest) {
   let email: string;
@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
   let firstName: string;
   let lastName: string;
   let password: string;
+  let isOwner = false;
 
   // Step 1: Parse + Validate Email
   try {
@@ -89,6 +90,16 @@ export async function POST(request: NextRequest) {
       } else {
         const isAdded = await addUserToOrganization(accessToken, organization.id, userData.user.id);
         console.log("user added to organization:", isAdded);
+
+        const OwnerRole = client.roles.find((role: any) => role.name === "owner");
+        if (OwnerRole) {
+        await assignClientRoleToUser({
+          userId: userData.user.id,
+            clientUUID: client.clientUUID,
+            roles: [OwnerRole]
+          });
+          isOwner = true;
+        }
       }
     } catch (error) {
       console.error("Error creating user:", error);
@@ -128,6 +139,7 @@ export async function POST(request: NextRequest) {
       enabled: userData.user.enabled,
       emailVerified: userData.user.emailVerified,
       credentials: userData.user.credentials,
+      isOwner: isOwner,
       // Add other relevant fields
     };
 
