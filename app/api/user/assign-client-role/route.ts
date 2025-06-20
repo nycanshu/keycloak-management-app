@@ -1,10 +1,13 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { assignClientRoleToUser } from "@/lib/keycloakAdminOperations";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, clientUUID, roles } = await request.json();
+      const { userId, clientUUID, roles } = await request.json();
+    console.log("userId:", userId);
+    console.log("clientUUID:", clientUUID);
+    console.log("roles:", roles);
+
     const response = await assignClientRoleToUser({ userId, clientUUID, roles });
 
     // If the inner call failed, reflect that in your main response
@@ -13,7 +16,7 @@ export async function POST(request: NextRequest) {
         success: false,
         message: response.message,
       }, { status: 500 });
-    }
+    } 
 
     return NextResponse.json({
       success: true,
