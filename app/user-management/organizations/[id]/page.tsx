@@ -1,9 +1,12 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function OrganizationPage({
   params,
@@ -12,7 +15,7 @@ export default function OrganizationPage({
 }) {
   const { id } = use(params);
   const searchParams = useSearchParams();
-
+  const router = useRouter();
   const name = searchParams.get("name");
   const status = searchParams.get("enabled") === "true";
 
@@ -44,17 +47,27 @@ export default function OrganizationPage({
           <CardTitle>Organization: {name || id}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div>
-            Status:{" "}
-            {status === true ? (
-              <Badge className="bg-green-500" variant="default">
-                Active
-              </Badge>
-            ) : (
-              <Badge className="bg-red-500" variant="default">
-                Inactive
-              </Badge>
-            )}
+          <div className="flex justify-between">
+            <div>
+              Status:{" "}
+              {status === true ? (
+                <Badge className="bg-green-500" variant="default">
+                  Active
+                </Badge>
+              ) : (
+                <Badge className="bg-red-500" variant="default">
+                  Inactive
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-center">
+              <Button
+                onClick={() => router.push("/user-management/create-user")}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
