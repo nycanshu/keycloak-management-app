@@ -55,23 +55,38 @@ interface UserDetailsProps {
   };
 }
 
+type Role = {
+  id: string;
+  name: string;
+  description: string;
+}
+
 const UserDetails: React.FC<UserDetailsProps> = ({ data }) => {
+  console.log("data:", data);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const { organization, client, clientRoles, user } = data;
 
+  console.log("clientRoles:", clientRoles.roles);
+
+console.log("userId:", user.id);
+console.log("clientUUID:", client.clientUUID);
+
+  const rolesToAssign: Role[] = clientRoles.roles.filter((role) => selectedRoles.includes(role.id))
+  console.log("rolesToAssign:", rolesToAssign);
+
   const handleAssignRole = async () => {
-    const rolesToAssign = clientRoles.roles
-      .filter((role) => selectedRoles.includes(role.id))
-      .map((role) => ({ id: role.id, name: role.name }));
+    
+    
+    console.log("rolesToAssign:", rolesToAssign);
   
     try {
       const response = await axios.post("/api/user/assign-client-role", {
-        body: {
         userId: user.id,
         clientUUID: client.clientUUID,
         roles: rolesToAssign,
-        }
       });
+
+      console.log("body :", response);
   
       console.log("response:", response.data);
       toast({
@@ -79,6 +94,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ data }) => {
         description: "Roles assigned successfully",
         variant: "default",
       });
+
+      //revalidate the page - refresh the page
+      window.location.reload();
     } catch (err) {
       console.error("Error assigning roles:", err);
     }
