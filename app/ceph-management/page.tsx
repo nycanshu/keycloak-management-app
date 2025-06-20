@@ -14,7 +14,7 @@ const mockPools = [
   {
     id: 2,
     name: "cephfs-data",
-    size: "1TB",
+    size: "10TB",
     used: "650GB",
     available: "350GB",
     status: "Healthy",
@@ -110,7 +110,7 @@ export default function CephManagement() {
                     <p className="text-sm font-medium">{pool.status}</p>
                     <div className="w-32 bg-muted rounded-full h-2 mt-1">
                       <div
-                        className={`h-2 rounded-full ${pool.status === "Healthy" ? "bg-green-500" : "bg-yellow-500"}`}
+                        className={`h-2 rounded-full max-w-full ${pool.status === "Healthy" ? "bg-green-500" : "bg-yellow-500"}`}
                         style={{
                           width: `${(Number.parseInt(pool.used) / Number.parseInt(pool.size)) * 100}%`,
                         }}

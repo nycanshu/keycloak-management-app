@@ -77,7 +77,7 @@ export async function createOrganizationInKeycloak(
     token: string,
     orgName: string,
     email?: string
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; isExisingOrganization: boolean }> {
     try {
         //check if organization already exists
         console.log('Creating Keycloak organization:', orgName);
@@ -133,7 +133,8 @@ export async function createOrganizationInKeycloak(
 
         return {
             id: createdOrg.id,
-            name: createdOrg.name
+            name: createdOrg.name,
+            isExisingOrganization: false
         };
 
     } catch (error: any) {
@@ -155,6 +156,7 @@ export async function createOrganizationInKeycloak(
                 return {
                     id: organization.id,
                     name: organization.name,
+                    isExisingOrganization: true,
                     
                 }
             }
@@ -585,7 +587,52 @@ export async function assignClientRoleToUser({
 
 
 
+  export async function inviteUserToOrganization(token: string, organizationId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    const url = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/organizations/${organizationId}/members/invite-existing-user`;
 
+    // Keycloak expects the userId as a form parameter named 'id'.
+    const formData = new URLSearchParams();
+    formData.append('id', userId);
+
+    try {
+        const response = await axios.post(url, formData.toString(), {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        });
+
+        // According to Keycloak docs, a successful invitation returns 204 No Content.
+        if (response.status === 204) {
+            return { success: true, message: "User invited successfully." };
+        } else {
+            // This case should ideally not be hit for a successful request
+            return { success: false, message: `Unexpected response status: ${response.status}. User might not be invited.` };
+        }
+    } catch (error: any) {
+        if (axios.isAxiosError(error)) {
+            const statusCode = error.response?.status;
+            const errorMessage = error.response?.data?.errorMessage || error.message;
+
+            console.error(`Error inviting user ${userId} to organization ${organizationId}: Status ${statusCode}, Message: ${errorMessage}`, error.response?.data);
+
+            if (statusCode === 400) {
+                return { success: false, message: `Bad Request: ${errorMessage}. Check if user ID is valid or if user is already a member.` };
+            } else if (statusCode === 401 || statusCode === 403) {
+                return { success: false, message: `Authorization Error: You don't have permission to perform this action.` };
+            } else if (statusCode === 404) {
+                return { success: false, message: `Not Found: Organization or user ID might be incorrect.` };
+            } else if (statusCode === 500) {
+                return { success: false, message: `Internal Server Error: Keycloak encountered an error. ${errorMessage}` };
+            } else {
+                return { success: false, message: `Failed to invite user: ${errorMessage} (Status: ${statusCode || 'Unknown'})` };
+            }
+        } else {
+            console.error(`An unexpected error occurred while inviting user ${userId}:`, error);
+            return { success: false, message: "An unknown error occurred while trying to invite the user." };
+        }
+    }
+}
 
 
 

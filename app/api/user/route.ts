@@ -1,7 +1,7 @@
 import { getAccessToken } from "@/lib/keycloakTokenManager"
 import { getOrganisationNameFromEmail } from "@/lib/getOrganisationFromEmail"
 import { type NextRequest, NextResponse } from "next/server"
-import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak, addUserToOrganization, getOrganizationFromKeycloak } from "@/lib/keycloakAdminOperations"
+import { createClientInKeycloak, createOrganizationInKeycloak, isOrganizationEnabled, getOrganizationsFromKeycloak, createUserInKeycloak, addUserToOrganization, getOrganizationFromKeycloak, inviteUserToOrganization } from "@/lib/keycloakAdminOperations"
 
 export async function POST(request: NextRequest) {
   let email: string;
@@ -75,13 +75,21 @@ export async function POST(request: NextRequest) {
     console.log("client created:", client);
 
     let userData: any;
+    let isEmailSent = false;
     try {
       userData = await createUserInKeycloak(accessToken, email, firstName, lastName, password);
       console.log("user created:", userData);
 
 
       //add user to organization
-      await addUserToOrganization(accessToken, organization.id, userData.user.id);
+      if (organization.isExisingOrganization) {
+        const isEmailSentToUser = await inviteUserToOrganization(accessToken, organization.id, userData.user.id);
+        isEmailSent = isEmailSentToUser.success;
+        console.log("email sent to user:", isEmailSentToUser);
+      } else {
+        const isAdded = await addUserToOrganization(accessToken, organization.id, userData.user.id);
+        console.log("user added to organization:", isAdded);
+      }
     } catch (error) {
       console.error("Error creating user:", error);
       return NextResponse.json({ success: false, message: "Failed to create user" }, { status: 500 });
@@ -91,6 +99,9 @@ export async function POST(request: NextRequest) {
     const cleanOrganization = {
       id: organization.id,
       name: organization.name,
+      isExisingOrganization: organization.isExisingOrganization,
+      isEmailSent: isEmailSent,
+      
       // Add other relevant fields
     };
 

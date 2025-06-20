@@ -62,8 +62,8 @@ type Role = {
 }
 
 const UserDetails: React.FC<UserDetailsProps> = ({ data }) => {
-  console.log("data:", data);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  console.log("data:", data);   
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const { organization, client, clientRoles, user } = data;
 
   console.log("clientRoles:", clientRoles.roles);
@@ -71,45 +71,27 @@ const UserDetails: React.FC<UserDetailsProps> = ({ data }) => {
 console.log("userId:", user.id);
 console.log("clientUUID:", client.clientUUID);
 
-  const rolesToAssign: Role[] = clientRoles.roles.filter((role) => selectedRoles.includes(role.id))
-  console.log("rolesToAssign:", rolesToAssign);
+  const roleToAssign: Role | undefined = clientRoles.roles.find((role) => role.id === selectedRole?.id);
 
   const handleAssignRole = async () => {
-    
-    
-    console.log("rolesToAssign:", rolesToAssign);
-  
+    if (!selectedRole) return;
     try {
       const response = await axios.post("/api/user/assign-client-role", {
         userId: user.id,
         clientUUID: client.clientUUID,
-        roles: rolesToAssign,
+        roles: roleToAssign ? [roleToAssign] : [],
       });
-
-      console.log("body :", response);
-  
-      console.log("response:", response.data);
       toast({
-        title: "Roles assigned successfully",
-        description: "Roles assigned successfully",
+        title: "Role assigned successfully",
+        description: `Role '${roleToAssign?.name}' assigned successfully!`,
         variant: "default",
       });
-
-      //revalidate the page - refresh the page
       window.location.reload();
     } catch (err) {
-      console.error("Error assigning roles:", err);
+      console.error("Error assigning role:", err);
     }
   };
   
-
-  const toggleRole = (roleId: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(roleId)
-        ? prev.filter((id) => id !== roleId)
-        : [...prev, roleId]
-    );
-  };
 
   return (
     <Card className="w-full max-w-3xl mx-auto mt-5 shadow-lg border border-muted-foreground/10">
@@ -157,9 +139,9 @@ console.log("clientUUID:", client.clientUUID);
             {clientRoles.roles.map((role) => (
               <Badge
                 key={role.id}
-                variant={selectedRoles.includes(role.id) ? "default" : "secondary"}
-                className="text-xs cursor-pointer"
-                onClick={() => toggleRole(role.id)}
+                variant={selectedRole?.id === role.id ? "default" : "secondary"}
+                className={`text-xs cursor-pointer transition-all duration-150 ${selectedRole?.id === role.id ? "ring-2 ring-green-500" : ""}`}
+                onClick={() => setSelectedRole(role)}
               >
                 {role.name}
               </Badge>
@@ -168,40 +150,47 @@ console.log("clientUUID:", client.clientUUID);
         </div>
 
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Assign Roles</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full max-w-lg justify-start">
-                {selectedRoles.length > 0 ? `${selectedRoles.length} role(s) selected` : "Select roles to assign"}
+          <Label className="text-sm font-medium">Assign Role</Label>
+          <div className="flex flex-row items-center gap-3 w-full max-w-lg">
+            <div className="flex-1 min-w-0" style={{ flexBasis: '70%' }}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start truncate">
+                    {selectedRole
+                      ? clientRoles.roles.find((r) => r.id === selectedRole?.id)?.name
+                      : "Select a role to assign"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full max-w-lg">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {clientRoles.roles.map((role) => (
+                          <CommandItem
+                            key={role.id}
+                            onSelect={() => setSelectedRole(role)}
+                            className="flex items-center justify-between"
+                          >
+                            <span>{role.name}</span>
+                            {selectedRole?.id === role.id && <Check className="w-4 h-4 text-green-600" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div style={{ flexBasis: '30%' }} className="flex-shrink-0">
+              <Button
+                onClick={handleAssignRole}
+                disabled={!selectedRole}
+                className="w-full bg-green-600 text-white hover:bg-green-700"
+              >
+                Assign
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full max-w-lg">
-              <Command>
-                <CommandList>
-                  <CommandGroup>
-                    {clientRoles.roles.map((role) => (
-                      <CommandItem
-                        key={role.id}
-                        onSelect={() => toggleRole(role.id)}
-                        className="flex items-center justify-between"
-                      >
-                        <span>{role.name}</span>
-                        {selectedRoles.includes(role.id) && <Check className="w-4 h-4 text-green-600" />}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-
-          <Button
-            onClick={handleAssignRole}
-            disabled={selectedRoles.length === 0}
-            className="w-full max-w-lg bg-green-600 text-white hover:bg-green-700"
-          >
-            Assign Selected Roles
-          </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,6 @@
 "use client";
 import { useToast } from "@/hooks/use-toast";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import UserDetails from "@/components/user-details";
 
@@ -98,6 +98,21 @@ export default function CreateUserPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      userResponse &&
+      userResponse.organization &&
+      userResponse.organization.isEmailSent
+    ) {
+      toast({
+        title: "Organization exists, User Invited Successfully",
+        description: "An invitation email has been sent to the user.",
+        variant: "default",
+        
+      });
+    }
+  }, [userResponse, toast]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background px-4">
